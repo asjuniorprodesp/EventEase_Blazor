@@ -153,6 +153,11 @@ code {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
+/* Virtualize injects spacer divs; in grid they must span all columns. */
+.events-grid > div[style*="height"] {
+    grid-column: 1 / -1;
+}
+
 .page-header-actions {
     display: flex;
     align-items: center;
@@ -181,3 +186,62 @@ code {
 .form-page {
     max-width: 720px;
 }
+
+    /* ── 404 / Not Found page ────────────────────────────────── */
+    .not-found-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 4rem 1rem;
+        gap: 0.75rem;
+    }
+
+    .not-found-code {
+        font-size: 7rem;
+        font-weight: 800;
+        line-height: 1;
+        background: linear-gradient(135deg, #0ea5e9, #67e8f9);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .not-found-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin: 0;
+    }
+
+    .not-found-message {
+        color: var(--text-muted);
+        max-width: 400px;
+        margin: 0;
+    }
+
+    /* ── Virtualize skeleton placeholder ─────────────────────── */
+    .event-card.skeleton {
+        pointer-events: none;
+        opacity: 0.55;
+        min-height: 140px;
+    }
+
+    .skeleton-line {
+        height: 14px;
+        border-radius: 6px;
+        background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        margin-bottom: 0.6rem;
+    }
+
+    .skeleton-line.w-40 { width: 40%; }
+    .skeleton-line.w-60 { width: 60%; }
+    .skeleton-line.w-80 { width: 80%; }
+
+    @keyframes shimmer {
+        0%   { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }

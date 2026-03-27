@@ -1,0 +1,2 @@
+Terminal 1 : Coursera\Blazor for Front-End Development\EventEase_Blazor> dotnet run --project EventEase_Blazor.csproj --launch-profile https
+Terminal 2 : Coursera\Blazor for Front-End Development\EventEase_Blazor\EventEase.Api> dotnet run --project EventEase.Api.csproj --launch-profile https

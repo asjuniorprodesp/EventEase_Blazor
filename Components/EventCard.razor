@@ -11,23 +11,36 @@
     else
     {
         <div class="mb-2">
-            <label class="form-label">Nome</label>
-            <InputText class="form-control" @bind-Value="editName" />
+            <label class="form-label">Nome <span class="text-danger">*</span></label>
+            <InputText class="@NameClass" @bind-Value="editName" />
+            @if (validationErrors.TryGetValue("nome", out var nomeErr))
+            {
+                <div class="invalid-feedback d-block">@nomeErr</div>
+            }
         </div>
 
         <div class="mb-2">
-            <label class="form-label">Data</label>
-            <InputDate TValue="DateOnly" class="form-control" @bind-Value="editDate" />
+            <label class="form-label">Data <span class="text-danger">*</span></label>
+            <InputDate TValue="DateOnly" class="@DateClass" @bind-Value="editDate" />
+            @if (validationErrors.TryGetValue("data", out var dataErr))
+            {
+                <div class="invalid-feedback d-block">@dataErr</div>
+            }
         </div>
 
         <div class="mb-2">
-            <label class="form-label">Local</label>
-            <InputText class="form-control" @bind-Value="editLocation" />
+            <label class="form-label">Local <span class="text-danger">*</span></label>
+            <InputText class="@LocationClass" @bind-Value="editLocation" />
+            @if (validationErrors.TryGetValue("local", out var localErr))
+            {
+                <div class="invalid-feedback d-block">@localErr</div>
+            }
         </div>
 
         <div class="mb-2">
             <label class="form-label">Descricao</label>
-            <InputTextArea class="form-control" @bind-Value="editDescription" />
+            <InputTextArea class="form-control" @bind-Value="editDescription" maxlength="1000" />
+            <div class="form-text">@((editDescription ?? "").Length)/1000 caracteres</div>
         </div>
     }
 
@@ -67,6 +80,14 @@
     private string? editDescription;
     private string? errorMessage;
     private string? successMessage;
+    private Dictionary<string, string> validationErrors = [];
+
+    private static readonly DateOnly MinDate = new(2000, 1, 1);
+    private static readonly DateOnly MaxDate = new(2100, 12, 31);
+
+    private string NameClass     => validationErrors.ContainsKey("nome")  ? "form-control is-invalid" : "form-control";
+    private string DateClass     => validationErrors.ContainsKey("data")  ? "form-control is-invalid" : "form-control";
+    private string LocationClass => validationErrors.ContainsKey("local") ? "form-control is-invalid" : "form-control";
 
     private void StartEdit()
     {
@@ -83,12 +104,37 @@
     {
         isEditing = false;
         errorMessage = null;
+        validationErrors.Clear();
+    }
+
+    private bool ValidateEditForm()
+    {
+        validationErrors.Clear();
+
+        if (string.IsNullOrWhiteSpace(editName))
+            validationErrors["nome"] = "O nome do evento e obrigatorio.";
+        else if (editName.Trim().Length > 200)
+            validationErrors["nome"] = "O nome nao pode ultrapassar 200 caracteres.";
+
+        if (editDate == default || editDate < MinDate || editDate > MaxDate)
+            validationErrors["data"] = "Informe uma data valida entre 01/01/2000 e 31/12/2100.";
+
+        if (string.IsNullOrWhiteSpace(editLocation))
+            validationErrors["local"] = "O local do evento e obrigatorio.";
+        else if (editLocation.Trim().Length > 300)
+            validationErrors["local"] = "O local nao pode ultrapassar 300 caracteres.";
+
+        return validationErrors.Count == 0;
     }
 
     private async Task SaveAsync()
     {
         errorMessage = null;
         successMessage = null;
+
+        if (!ValidateEditForm())
+            return;
+
         isSaving = true;
 
         try

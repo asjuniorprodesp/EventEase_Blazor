@@ -30,10 +30,18 @@ else if (events.Count == 0)
 else
 {
     <section class="events-grid">
-        @foreach (var item in events)
-        {
-            <EventCard Event="item" />
-        }
+        <Virtualize Items="events" Context="item" OverscanCount="4">
+            <ItemContent>
+                <EventCard Event="item" />
+            </ItemContent>
+            <Placeholder>
+                <article class="event-card skeleton">
+                    <div class="skeleton-line w-60"></div>
+                    <div class="skeleton-line w-40"></div>
+                    <div class="skeleton-line w-80"></div>
+                </article>
+            </Placeholder>
+        </Virtualize>
     </section>
 }
 
