@@ -5,6 +5,8 @@ namespace EventEase_Blazor.Data;
 
 public class EventEaseApiClient(HttpClient httpClient)
 {
+    public Uri ApiBaseUri => httpClient.BaseAddress ?? throw new InvalidOperationException("BaseAddress da API nao configurado.");
+
     public async Task<IReadOnlyList<EventItem>> GetEventsAsync()
     {
         var items = await httpClient.GetFromJsonAsync<List<EventItem>>("api/events");
@@ -109,5 +111,42 @@ public class EventEaseApiClient(HttpClient httpClient)
             var details = await registrationResponse.Content.ReadAsStringAsync();
             throw new InvalidOperationException($"Falha ao registrar inscricao: {details}");
         }
+    }
+
+    public async Task<IReadOnlyList<AttendanceItem>> GetAttendanceByEventAsync(int eventId)
+    {
+        var items = await httpClient.GetFromJsonAsync<List<AttendanceItem>>("api/attendance") ?? [];
+        return items.Where(a => a.EventId == eventId).ToList();
+    }
+
+    public async Task<AttendanceItem> CheckInAsync(int eventId, int userId)
+    {
+        var existing = await GetAttendanceByEventAsync(eventId);
+        var alreadyCheckedIn = existing.FirstOrDefault(a => a.UserId == userId);
+        if (alreadyCheckedIn is not null)
+        {
+            return alreadyCheckedIn;
+        }
+
+        var response = await httpClient.PostAsJsonAsync("api/attendance", new AttendanceItem
+        {
+            UserId = userId,
+            EventId = eventId,
+            CheckInTime = DateTime.Now
+        });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var details = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Falha ao registrar check-in: {details}");
+        }
+
+        var created = await response.Content.ReadFromJsonAsync<AttendanceItem>();
+        if (created is null)
+        {
+            throw new InvalidOperationException("A API retornou um check-in vazio.");
+        }
+
+        return created;
     }
 }

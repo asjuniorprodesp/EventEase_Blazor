@@ -1,5 +1,7 @@
 @page "/events/{Id:int}/attendees"
 @inject EventEaseApiClient ApiClient
+@implements IAsyncDisposable
+@using Microsoft.AspNetCore.SignalR.Client
 
 <PageTitle>Inscritos no Evento</PageTitle>
 
@@ -21,6 +23,15 @@ else
     <p><strong>Data:</strong> @eventItem.EventDate.ToString("dd/MM/yyyy")</p>
     <p><strong>Local:</strong> @eventItem.EventLocation</p>
 
+    <div class="signalr-status @ConnectionCssClass" role="status" aria-live="polite">
+        <span class="signalr-dot"></span>
+        <span>SignalR: @ConnectionLabel</span>
+    </div>
+
+    <div class="alert alert-info" role="alert">
+        <strong>Attendance Tracker:</strong> acompanhe o check-in dos inscritos e registre a entrada quando necessario.
+    </div>
+
     @if (attendees.Count == 0)
     {
         <p>Nenhum inscrito para este evento.</p>
@@ -33,6 +44,9 @@ else
                     <th>Usuario</th>
                     <th>E-mail</th>
                     <th>Data de inscricao</th>
+                    <th>Status de check-in</th>
+                    <th>Horario do check-in</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
@@ -42,10 +56,42 @@ else
                         <td>@attendee.FullName</td>
                         <td>@attendee.Email</td>
                         <td>@attendee.RegistrationDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            @if (attendee.HasCheckedIn)
+                            {
+                                <span class="badge text-bg-success">Check-in realizado</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Pendente</span>
+                            }
+                        </td>
+                        <td>
+                            @(attendee.CheckInTime?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+                        </td>
+                        <td>
+                            @if (attendee.HasCheckedIn)
+                            {
+                                <button class="btn btn-sm btn-outline-success" disabled>Concluido</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-primary"
+                                        @onclick="() => DoCheckInAsync(attendee)"
+                                        disabled="@isCheckingInIds.Contains(attendee.UserId)">
+                                    @(isCheckingInIds.Contains(attendee.UserId) ? "Registrando..." : "Fazer check-in")
+                                </button>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <p class="text-success">@successMessage</p>
     }
 
     <NavLink class="btn btn-outline-primary" href="@($"/events/{Id}")">Voltar para a ficha do evento</NavLink>
@@ -57,13 +103,39 @@ else
 
     private EventItem? eventItem;
     private List<AttendeeViewModel> attendees = [];
+    private HashSet<int> isCheckingInIds = [];
     private bool isLoading = true;
     private string? errorMessage;
+    private string? successMessage;
+    private HubConnection? attendanceHubConnection;
+    private RealtimeConnectionState connectionState = RealtimeConnectionState.Connecting;
+
+    private string ConnectionLabel => connectionState switch
+    {
+        RealtimeConnectionState.Connected => "Conectado",
+        RealtimeConnectionState.Reconnecting => "Reconectando...",
+        RealtimeConnectionState.Disconnected => "Desconectado",
+        _ => "Conectando..."
+    };
+
+    private string ConnectionCssClass => connectionState switch
+    {
+        RealtimeConnectionState.Connected => "signalr-connected",
+        RealtimeConnectionState.Reconnecting => "signalr-reconnecting",
+        RealtimeConnectionState.Disconnected => "signalr-disconnected",
+        _ => "signalr-connecting"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsureHubConnectionAsync();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
         errorMessage = null;
+        successMessage = null;
 
         try
         {
@@ -73,9 +145,19 @@ else
                 return;
             }
 
-            var registrations = await ApiClient.GetEventRegistrationsByEventAsync(Id);
-            var users = await ApiClient.GetUsersAsync();
+            var registrationsTask = ApiClient.GetEventRegistrationsByEventAsync(Id);
+            var usersTask = ApiClient.GetUsersAsync();
+            var attendanceTask = ApiClient.GetAttendanceByEventAsync(Id);
+
+            await Task.WhenAll(registrationsTask, usersTask, attendanceTask);
+
+            var registrations = registrationsTask.Result;
+            var users = usersTask.Result;
+            var attendance = attendanceTask.Result;
             var usersById = users.ToDictionary(u => u.UserId, u => u);
+            var attendanceByUserId = attendance
+                .GroupBy(a => a.UserId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.CheckInTime).First());
 
             attendees = registrations
                 .Where(r => usersById.ContainsKey(r.UserId))
@@ -83,7 +165,10 @@ else
                 {
                     FullName = usersById[r.UserId].FullName,
                     Email = usersById[r.UserId].Email,
-                    RegistrationDate = r.RegistrationDate
+                    RegistrationDate = r.RegistrationDate,
+                    UserId = r.UserId,
+                    HasCheckedIn = attendanceByUserId.ContainsKey(r.UserId),
+                    CheckInTime = attendanceByUserId.TryGetValue(r.UserId, out var checkIn) ? checkIn.CheckInTime : null
                 })
                 .OrderBy(a => a.FullName)
                 .ToList();
@@ -98,10 +183,115 @@ else
         }
     }
 
+    private async Task EnsureHubConnectionAsync()
+    {
+        if (attendanceHubConnection is not null)
+            return;
+
+        var hubUrl = new Uri(ApiClient.ApiBaseUri, "hubs/attendance");
+        attendanceHubConnection = new HubConnectionBuilder()
+            .WithUrl(hubUrl)
+            .WithAutomaticReconnect()
+            .Build();
+
+        attendanceHubConnection.Reconnecting += async _ =>
+        {
+            connectionState = RealtimeConnectionState.Reconnecting;
+            await InvokeAsync(StateHasChanged);
+        };
+
+        attendanceHubConnection.Reconnected += async _ =>
+        {
+            connectionState = RealtimeConnectionState.Connected;
+            successMessage = "Conexao restabelecida. Atualizacoes em tempo real ativas.";
+            await InvokeAsync(StateHasChanged);
+        };
+
+        attendanceHubConnection.Closed += async _ =>
+        {
+            connectionState = RealtimeConnectionState.Disconnected;
+            await InvokeAsync(StateHasChanged);
+        };
+
+        attendanceHubConnection.On<int, int, DateTime>("AttendanceChanged", async (eventId, userId, checkInTime) =>
+        {
+            if (eventId != Id)
+                return;
+
+            await InvokeAsync(() =>
+            {
+                var attendee = attendees.FirstOrDefault(a => a.UserId == userId);
+                if (attendee is null)
+                    return;
+
+                attendee.HasCheckedIn = true;
+                attendee.CheckInTime = checkInTime;
+                successMessage = "Attendance Tracker atualizado em tempo real.";
+                StateHasChanged();
+            });
+        });
+
+        try
+        {
+            await attendanceHubConnection.StartAsync();
+            connectionState = RealtimeConnectionState.Connected;
+        }
+        catch
+        {
+            connectionState = RealtimeConnectionState.Disconnected;
+            throw;
+        }
+    }
+
+    private async Task DoCheckInAsync(AttendeeViewModel attendee)
+    {
+        if (attendee.HasCheckedIn)
+            return;
+
+        successMessage = null;
+        errorMessage = null;
+        isCheckingInIds.Add(attendee.UserId);
+
+        try
+        {
+            var created = await ApiClient.CheckInAsync(Id, attendee.UserId);
+            attendee.HasCheckedIn = true;
+            attendee.CheckInTime = created.CheckInTime;
+            successMessage = $"Check-in de {attendee.FullName} registrado com sucesso.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Falha ao registrar check-in: {ex.Message}";
+        }
+        finally
+        {
+            isCheckingInIds.Remove(attendee.UserId);
+        }
+    }
+
     private sealed class AttendeeViewModel
     {
+        public int UserId { get; init; }
         public string FullName { get; init; } = string.Empty;
         public string Email { get; init; } = string.Empty;
         public DateTime RegistrationDate { get; init; }
+        public bool HasCheckedIn { get; set; }
+        public DateTime? CheckInTime { get; set; }
+    }
+
+    private enum RealtimeConnectionState
+    {
+        Connecting,
+        Connected,
+        Reconnecting,
+        Disconnected
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (attendanceHubConnection is not null)
+        {
+            await attendanceHubConnection.DisposeAsync();
+        }
     }
 }

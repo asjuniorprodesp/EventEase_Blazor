@@ -1,13 +1,15 @@
 using EventEase.Api.Data;
+using EventEase.Api.Hubs;
 using EventEase.Api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventEase.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AttendanceController(EventEaseDbContext dbContext) : ControllerBase
+public class AttendanceController(EventEaseDbContext dbContext, IHubContext<AttendanceHub> hubContext) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Attendance>>> GetAll()
@@ -27,6 +29,13 @@ public class AttendanceController(EventEaseDbContext dbContext) : ControllerBase
     {
         dbContext.Attendance.Add(entity);
         await dbContext.SaveChangesAsync();
+
+        await hubContext.Clients.All.SendAsync(
+            "AttendanceChanged",
+            entity.EventId,
+            entity.UserId,
+            entity.CheckInTime);
+
         return CreatedAtAction(nameof(GetById), new { id = entity.AttendanceId }, entity);
     }
 

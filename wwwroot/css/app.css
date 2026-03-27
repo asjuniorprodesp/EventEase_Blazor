@@ -187,6 +187,44 @@ code {
     max-width: 720px;
 }
 
+.signalr-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    border: 1px solid transparent;
+}
+
+.signalr-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.signalr-connected {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.signalr-connecting,
+.signalr-reconnecting {
+    color: #92400e;
+    background: #fef3c7;
+    border-color: #fcd34d;
+}
+
+.signalr-disconnected {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
     /* ── 404 / Not Found page ────────────────────────────────── */
     .not-found-container {
         display: flex;
