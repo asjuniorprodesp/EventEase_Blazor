@@ -1,0 +1,162 @@
+@apiUrl = https://localhost:7129 
+###@apiUrl = http://localhost:5146
+@userId = 1
+@eventId = 1
+@registrationId = 1
+@attendanceId = 1
+@sessionId = 11111111-1111-1111-1111-111111111111
+
+### USERS - CREATE (INSERT)
+POST {{apiUrl}}/api/users
+Content-Type: application/json
+
+{
+  "fullName": "Ana Silva",
+  "email": "ana.silva@eventease.local"
+}
+
+### USERS - GET ALL (SELECT)
+GET {{apiUrl}}/api/users
+
+### USERS - GET BY ID (SELECT)
+GET {{apiUrl}}/api/users/{{userId}}
+
+### USERS - UPDATE (UPDATE)
+PUT {{apiUrl}}/api/users/{{userId}}
+Content-Type: application/json
+
+{
+  "userId": {{userId}},
+  "fullName": "Ana Silva Atualizada",
+  "email": "ana.silva.updated@eventease.local",
+  "createdAt": "2026-03-26T10:00:00"
+}
+
+### USERS - DELETE (DELETE)
+DELETE {{apiUrl}}/api/users/{{userId}}
+
+
+### EVENTS - CREATE (INSERT)
+POST {{apiUrl}}/api/events
+Content-Type: application/json
+
+{
+  "eventName": "Tech Meetup SP",
+  "eventDescription": "Encontro para comunidade tech",
+  "eventDate": "2026-04-15",
+  "eventLocation": "Sao Paulo"
+}
+
+### EVENTS - GET ALL (SELECT)
+GET {{apiUrl}}/api/events
+
+### EVENTS - GET BY ID (SELECT)
+GET {{apiUrl}}/api/events/{{eventId}}
+
+### EVENTS - UPDATE (UPDATE)
+PUT {{apiUrl}}/api/events/{{eventId}}
+Content-Type: application/json
+
+{
+  "eventId": {{eventId}},
+  "eventName": "Tech Meetup SP 2026",
+  "eventDescription": "Evento atualizado",
+  "eventDate": "2026-04-20",
+  "eventLocation": "Campinas",
+  "createdAt": "2026-03-26T10:00:00"
+}
+
+### EVENTS - DELETE (DELETE)
+DELETE {{apiUrl}}/api/events/{{eventId}}
+
+
+### EVENT REGISTRATIONS - CREATE (INSERT)
+POST {{apiUrl}}/api/eventregistrations
+Content-Type: application/json
+
+{
+  "userId": {{userId}},
+  "eventId": {{eventId}}
+}
+
+### EVENT REGISTRATIONS - GET ALL (SELECT)
+GET {{apiUrl}}/api/eventregistrations
+
+### EVENT REGISTRATIONS - GET BY ID (SELECT)
+GET {{apiUrl}}/api/eventregistrations/{{registrationId}}
+
+### EVENT REGISTRATIONS - UPDATE (UPDATE)
+PUT {{apiUrl}}/api/eventregistrations/{{registrationId}}
+Content-Type: application/json
+
+{
+  "registrationId": {{registrationId}},
+  "userId": {{userId}},
+  "eventId": {{eventId}},
+  "registrationDate": "2026-03-26T10:00:00"
+}
+
+### EVENT REGISTRATIONS - DELETE (DELETE)
+DELETE {{apiUrl}}/api/eventregistrations/{{registrationId}}
+
+
+### USER SESSIONS - CREATE (INSERT)
+POST {{apiUrl}}/api/usersessions
+Content-Type: application/json
+
+{
+  "userId": {{userId}},
+  "sessionData": "{\"step\":1,\"theme\":\"light\"}",
+  "expiresAt": "2026-12-31T23:59:59"
+}
+
+### USER SESSIONS - GET ALL (SELECT)
+GET {{apiUrl}}/api/usersessions
+
+### USER SESSIONS - GET BY ID (SELECT)
+GET {{apiUrl}}/api/usersessions/{{sessionId}}
+
+### USER SESSIONS - UPDATE (UPDATE)
+PUT {{apiUrl}}/api/usersessions/{{sessionId}}
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "userId": {{userId}},
+  "sessionData": "{\"step\":2,\"theme\":\"dark\"}",
+  "createdAt": "2026-03-26T10:00:00",
+  "expiresAt": "2027-01-31T23:59:59"
+}
+
+### USER SESSIONS - DELETE (DELETE)
+DELETE {{apiUrl}}/api/usersessions/{{sessionId}}
+
+
+### ATTENDANCE - CREATE (INSERT)
+POST {{apiUrl}}/api/attendance
+Content-Type: application/json
+
+{
+  "userId": {{userId}},
+  "eventId": {{eventId}}
+}
+
+### ATTENDANCE - GET ALL (SELECT)
+GET {{apiUrl}}/api/attendance
+
+### ATTENDANCE - GET BY ID (SELECT)
+GET {{apiUrl}}/api/attendance/{{attendanceId}}
+
+### ATTENDANCE - UPDATE (UPDATE)
+PUT {{apiUrl}}/api/attendance/{{attendanceId}}
+Content-Type: application/json
+
+{
+  "attendanceId": {{attendanceId}},
+  "userId": {{userId}},
+  "eventId": {{eventId}},
+  "checkInTime": "2026-03-26T10:00:00"
+}
+
+### ATTENDANCE - DELETE (DELETE)
+DELETE {{apiUrl}}/api/attendance/{{attendanceId}}

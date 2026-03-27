@@ -1,0 +1,63 @@
+@page "/events"
+@inject EventEaseApiClient ApiClient
+
+<PageTitle>Eventos</PageTitle>
+
+<div class="page-header-actions">
+    <h1>Lista de Eventos</h1>
+    <NavLink class="btn btn-primary" href="/events/new">Adicionar evento</NavLink>
+</div>
+
+@if (Created is true)
+{
+    <div class="alert alert-success" role="alert">
+        Evento criado com sucesso.
+    </div>
+}
+
+@if (isLoading)
+{
+    <p>Carregando eventos...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+else if (events.Count == 0)
+{
+    <p>Nenhum evento encontrado.</p>
+}
+else
+{
+    <section class="events-grid">
+        @foreach (var item in events)
+        {
+            <EventCard Event="item" />
+        }
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "created")]
+    public bool? Created { get; set; }
+
+    private List<EventItem> events = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            events = (await ApiClient.GetEventsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar eventos: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

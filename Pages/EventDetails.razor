@@ -1,0 +1,60 @@
+@page "/events/{Id:int}"
+@inject EventEaseApiClient ApiClient
+
+<PageTitle>Detalhes do Evento</PageTitle>
+
+@if (isLoading)
+{
+    <p>Carregando detalhes...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+else if (eventItem is null)
+{
+    <p>Evento nao encontrado.</p>
+}
+else
+{
+    <article class="event-detail-card">
+        <h1>@eventItem.EventName</h1>
+        <p><strong>Data:</strong> @eventItem.EventDate.ToString("dd/MM/yyyy")</p>
+        <p><strong>Local:</strong> @eventItem.EventLocation</p>
+        <p><strong>Descricao:</strong> @eventItem.EventDescription</p>
+
+        <div class="event-card-actions">
+            <NavLink class="btn btn-outline-primary" href="/events">Voltar</NavLink>
+            <NavLink class="btn btn-outline-secondary" href="@($"/events/{eventItem.EventId}/attendees")">Ver inscritos</NavLink>
+            <NavLink class="btn btn-primary" href="@($"/events/{eventItem.EventId}/register")">Fazer inscricao</NavLink>
+        </div>
+    </article>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EventItem? eventItem;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            eventItem = await ApiClient.GetEventByIdAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar evento: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

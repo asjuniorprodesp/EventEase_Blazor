@@ -1,0 +1,107 @@
+@page "/events/{Id:int}/attendees"
+@inject EventEaseApiClient ApiClient
+
+<PageTitle>Inscritos no Evento</PageTitle>
+
+@if (isLoading)
+{
+    <p>Carregando inscritos...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+else if (eventItem is null)
+{
+    <p>Evento nao encontrado.</p>
+}
+else
+{
+    <h1>Inscritos em @eventItem.EventName</h1>
+    <p><strong>Data:</strong> @eventItem.EventDate.ToString("dd/MM/yyyy")</p>
+    <p><strong>Local:</strong> @eventItem.EventLocation</p>
+
+    @if (attendees.Count == 0)
+    {
+        <p>Nenhum inscrito para este evento.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>E-mail</th>
+                    <th>Data de inscricao</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var attendee in attendees)
+                {
+                    <tr>
+                        <td>@attendee.FullName</td>
+                        <td>@attendee.Email</td>
+                        <td>@attendee.RegistrationDate.ToString("dd/MM/yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <NavLink class="btn btn-outline-primary" href="@($"/events/{Id}")">Voltar para a ficha do evento</NavLink>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EventItem? eventItem;
+    private List<AttendeeViewModel> attendees = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            eventItem = await ApiClient.GetEventByIdAsync(Id);
+            if (eventItem is null)
+            {
+                return;
+            }
+
+            var registrations = await ApiClient.GetEventRegistrationsByEventAsync(Id);
+            var users = await ApiClient.GetUsersAsync();
+            var usersById = users.ToDictionary(u => u.UserId, u => u);
+
+            attendees = registrations
+                .Where(r => usersById.ContainsKey(r.UserId))
+                .Select(r => new AttendeeViewModel
+                {
+                    FullName = usersById[r.UserId].FullName,
+                    Email = usersById[r.UserId].Email,
+                    RegistrationDate = r.RegistrationDate
+                })
+                .OrderBy(a => a.FullName)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar inscritos: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private sealed class AttendeeViewModel
+    {
+        public string FullName { get; init; } = string.Empty;
+        public string Email { get; init; } = string.Empty;
+        public DateTime RegistrationDate { get; init; }
+    }
+}

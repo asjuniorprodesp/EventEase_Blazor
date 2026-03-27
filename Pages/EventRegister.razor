@@ -1,0 +1,106 @@
+@page "/events/{Id:int}/register"
+@inject EventEaseApiClient ApiClient
+
+<PageTitle>Inscricao</PageTitle>
+
+@if (isLoading)
+{
+    <p>Carregando evento...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+else if (eventItem is null)
+{
+    <p>Evento nao encontrado.</p>
+}
+else
+{
+    <h1>Inscricao em @eventItem.EventName</h1>
+    <p><strong>Data:</strong> @eventItem.EventDate.ToString("dd/MM/yyyy")</p>
+    <p><strong>Local:</strong> @eventItem.EventLocation</p>
+
+    <EditForm Model="form" OnValidSubmit="SubmitAsync" class="register-form">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="fullName">Nome completo</label>
+            <InputText id="fullName" class="form-control" @bind-Value="form.FullName" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="email">E-mail</label>
+            <InputText id="email" type="email" class="form-control" @bind-Value="form.Email" />
+        </div>
+
+        <div class="event-card-actions">
+            <button class="btn btn-primary" type="submit" disabled="@isSubmitting">@(isSubmitting ? "Enviando..." : "Confirmar inscricao")</button>
+            <NavLink class="btn btn-outline-primary" href="@($"/events/{Id}")">Voltar aos detalhes</NavLink>
+        </div>
+    </EditForm>
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <p class="text-success mt-3">@successMessage</p>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private EventItem? eventItem;
+    private readonly RegistrationForm form = new();
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            eventItem = await ApiClient.GetEventByIdAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar evento: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            await ApiClient.RegisterAsync(Id, form.FullName, form.Email);
+            successMessage = "Inscricao realizada com sucesso.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Falha ao registrar inscricao: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private class RegistrationForm
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+    }
+}

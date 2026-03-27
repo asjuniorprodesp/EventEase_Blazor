@@ -1,0 +1,50 @@
+﻿@inherits LayoutComponentBase
+
+<div class="app-shell @(collapsed ? "sidebar-collapsed" : "")">
+    <aside class="sidebar">
+        <div class="brand-block">
+            @if (!collapsed)
+            {
+                <p class="brand-kicker">Event Management</p>
+                <h1 class="brand-title">EventEase</h1>
+            }
+            else
+            {
+                <p class="brand-icon-only">EE</p>
+            }
+        </div>
+
+        <nav class="sidebar-nav">
+            <NavLink href="/" Match="NavLinkMatch.All" title="Inicio">
+                <i class="bi bi-house-fill nav-icon"></i>
+                <span class="nav-label">Inicio</span>
+            </NavLink>
+            <NavLink href="/events" title="Eventos">
+                <i class="bi bi-calendar-event-fill nav-icon"></i>
+                <span class="nav-label">Eventos</span>
+            </NavLink>
+            <NavLink href="/events/new" title="Novo Evento">
+                <i class="bi bi-plus-circle-fill nav-icon"></i>
+                <span class="nav-label">Novo Evento</span>
+            </NavLink>
+            <NavLink href="/users" title="Usuarios">
+                <i class="bi bi-people-fill nav-icon"></i>
+                <span class="nav-label">Usuarios</span>
+            </NavLink>
+        </nav>
+
+        <button class="sidebar-toggle" @onclick="ToggleSidebar" title="@(collapsed ? "Expandir menu" : "Compactar menu")">
+            <i class="bi @(collapsed ? "bi-chevron-right" : "bi-chevron-left")"></i>
+        </button>
+    </aside>
+
+    <main class="page-content">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool collapsed = false;
+
+    private void ToggleSidebar() => collapsed = !collapsed;
+}

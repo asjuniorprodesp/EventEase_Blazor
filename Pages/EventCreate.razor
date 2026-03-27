@@ -1,0 +1,72 @@
+@page "/events/new"
+@inject EventEaseApiClient ApiClient
+@inject NavigationManager Navigation
+
+<PageTitle>Novo Evento</PageTitle>
+
+<h1>Cadastrar Novo Evento</h1>
+
+<EditForm Model="form" OnValidSubmit="HandleSubmitAsync" class="form-page">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Nome do evento</label>
+        <InputText id="name" class="form-control" @bind-Value="form.EventName" />
+        <ValidationMessage For="() => form.EventName" />
+    </div>
+
+    <div class="mb-3">
+        <label for="date" class="form-label">Data</label>
+        <InputDate id="date" class="form-control" @bind-Value="form.EventDate" />
+        <ValidationMessage For="() => form.EventDate" />
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Local</label>
+        <InputText id="location" class="form-control" @bind-Value="form.EventLocation" />
+        <ValidationMessage For="() => form.EventLocation" />
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Descricao</label>
+        <InputTextArea id="description" class="form-control" @bind-Value="form.EventDescription" />
+        <ValidationMessage For="() => form.EventDescription" />
+    </div>
+
+    <div class="event-card-actions">
+        <button type="submit" class="btn btn-primary" disabled="@isSaving">@(isSaving ? "Salvando..." : "Salvar evento")</button>
+        <NavLink class="btn btn-outline-secondary" href="/events">Cancelar</NavLink>
+    </div>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger mt-3">@errorMessage</p>
+}
+
+@code {
+    private readonly EventCreateRequest form = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task HandleSubmitAsync()
+    {
+        errorMessage = null;
+        isSaving = true;
+
+        try
+        {
+            await ApiClient.CreateEventAsync(form);
+            Navigation.NavigateTo("/events?created=true");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

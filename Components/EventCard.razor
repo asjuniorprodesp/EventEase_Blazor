@@ -1,0 +1,125 @@
+@inject EventEaseApiClient ApiClient
+
+<article class="event-card">
+    @if (!isEditing)
+    {
+        <h3>@Event.EventName</h3>
+        <p><strong>Data:</strong> @Event.EventDate.ToString("dd/MM/yyyy")</p>
+        <p><strong>Local:</strong> @Event.EventLocation</p>
+        <p><strong>Descricao:</strong> @Event.EventDescription</p>
+    }
+    else
+    {
+        <div class="mb-2">
+            <label class="form-label">Nome</label>
+            <InputText class="form-control" @bind-Value="editName" />
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">Data</label>
+            <InputDate TValue="DateOnly" class="form-control" @bind-Value="editDate" />
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">Local</label>
+            <InputText class="form-control" @bind-Value="editLocation" />
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label">Descricao</label>
+            <InputTextArea class="form-control" @bind-Value="editDescription" />
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <p class="text-danger event-feedback">@errorMessage</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <p class="text-success event-feedback">@successMessage</p>
+    }
+
+    <div class="event-card-actions">
+        @if (!isEditing)
+        {
+            <button class="btn btn-outline-secondary" @onclick="StartEdit">Editar evento</button>
+            <NavLink class="btn btn-outline-primary" href="@($"/events/{Event.EventId}")">Detalhes</NavLink>
+            <NavLink class="btn btn-primary" href="@($"/events/{Event.EventId}/register")">Inscricao</NavLink>
+        }
+        else
+        {
+            <button class="btn btn-primary" @onclick="SaveAsync" disabled="@isSaving">@(isSaving ? "Salvando..." : "Salvar alteracoes")</button>
+            <button class="btn btn-outline-secondary" @onclick="CancelEdit" disabled="@isSaving">Cancelar</button>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public EventItem Event { get; set; } = default!;
+
+    private bool isEditing;
+    private bool isSaving;
+    private string editName = string.Empty;
+    private DateOnly editDate;
+    private string editLocation = string.Empty;
+    private string? editDescription;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private void StartEdit()
+    {
+        errorMessage = null;
+        successMessage = null;
+        editName = Event.EventName;
+        editDate = Event.EventDate;
+        editLocation = Event.EventLocation;
+        editDescription = Event.EventDescription;
+        isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+        errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        errorMessage = null;
+        successMessage = null;
+        isSaving = true;
+
+        try
+        {
+            var updated = new EventItem
+            {
+                EventId = Event.EventId,
+                EventName = editName.Trim(),
+                EventDate = editDate,
+                EventLocation = editLocation.Trim(),
+                EventDescription = string.IsNullOrWhiteSpace(editDescription) ? null : editDescription.Trim(),
+                CreatedAt = Event.CreatedAt
+            };
+
+            await ApiClient.UpdateEventAsync(updated);
+
+            Event.EventName = updated.EventName;
+            Event.EventDate = updated.EventDate;
+            Event.EventLocation = updated.EventLocation;
+            Event.EventDescription = updated.EventDescription;
+
+            successMessage = "Evento atualizado com sucesso.";
+            isEditing = false;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

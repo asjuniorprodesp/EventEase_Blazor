@@ -1,0 +1,156 @@
+@page "/users"
+@inject EventEaseApiClient ApiClient
+
+<PageTitle>Usuarios</PageTitle>
+
+<h1>Usuarios Cadastrados</h1>
+
+@if (isLoading)
+{
+    <p>Carregando usuarios...</p>
+}
+else if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <p class="text-danger">@errorMessage</p>
+}
+else if (users.Count == 0)
+{
+    <p>Nenhum usuario encontrado.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Criado em</th>
+                <th>Acoes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                var isEditing = editingUserId == user.UserId;
+                <tr>
+                    <td>@user.UserId</td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control" @bind-Value="editFullName" />
+                        }
+                        else
+                        {
+                            @user.FullName
+                        }
+                    </td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <InputText class="form-control" @bind-Value="editEmail" />
+                        }
+                        else
+                        {
+                            @user.Email
+                        }
+                    </td>
+                    <td>@user.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        @if (isEditing)
+                        {
+                            <button class="btn btn-sm btn-primary me-2" @onclick="() => SaveEditAsync(user)">Salvar</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="CancelEdit">Cancelar</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(user)">Editar</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!string.IsNullOrWhiteSpace(successMessage))
+    {
+        <p class="text-success">@successMessage</p>
+    }
+}
+
+@code {
+    private List<UserItem> users = [];
+    private bool isLoading = true;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private int? editingUserId;
+    private string editFullName = string.Empty;
+    private string editEmail = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            users = (await ApiClient.GetUsersAsync()).OrderBy(u => u.UserId).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao carregar usuarios: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void StartEdit(UserItem user)
+    {
+        successMessage = null;
+        errorMessage = null;
+        editingUserId = user.UserId;
+        editFullName = user.FullName;
+        editEmail = user.Email;
+    }
+
+    private void CancelEdit()
+    {
+        editingUserId = null;
+        editFullName = string.Empty;
+        editEmail = string.Empty;
+    }
+
+    private async Task SaveEditAsync(UserItem original)
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        var updated = new UserItem
+        {
+            UserId = original.UserId,
+            FullName = editFullName.Trim(),
+            Email = editEmail.Trim(),
+            CreatedAt = original.CreatedAt
+        };
+
+        try
+        {
+            await ApiClient.UpdateUserAsync(updated);
+            successMessage = "Usuario atualizado com sucesso.";
+            editingUserId = null;
+            await LoadUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao atualizar usuario: {ex.Message}";
+        }
+    }
+}
